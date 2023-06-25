@@ -1,0 +1,15 @@
+#!/usr/bin/env php
+<?php
+
+require_once dirname(__DIR__).'/vendor/autoload.php';
+
+$loop = \React\EventLoop\Loop::get();
+$logger = new \inisire\NetBus\Logging\EchoLogger();
+
+$queryServer = new \inisire\NetBus\QueryBusServer($loop, $logger);
+$queryServer->start('0.0.0.0:5555');
+
+$eventServer = new \inisire\NetBus\EventBusServer($loop, $logger);
+$eventServer->start('0.0.0.0:5556');
+
+$loop->run();

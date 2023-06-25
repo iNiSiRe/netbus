@@ -1,0 +1,27 @@
+{
+    "name": "inisire/netbus",
+    "type": "project",
+    "license": "proprietary",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=8.0",
+        "ext-json": "*",
+        "psr/event-dispatcher": "^1.0",
+        "psr/log": "^3.0",
+        "react/socket": "^1.13"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": {
+            "inisire/*": "source",
+            "*": "dist"
+        },
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "inisire\\NetBus\\": "src/"
+        }
+    }
+}
