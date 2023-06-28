@@ -13,7 +13,7 @@ use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 
-class QueryBusClient implements QueryBus
+class QueryBusClient implements QueryBusInterface
 {
     private ?Connection $connection = null;
     private \SplQueue $queue;
@@ -72,22 +72,22 @@ class QueryBusClient implements QueryBus
 
     private function handleCommand(Command $command): void
     {
-        $data = $command['d'];
+        $data = $command->getData();
 
         switch ($command->getName()) {
             case 'query': {
-                $this->handleQuery($data['query_id'], new Query($data['name'], $data['data']));
+                $this->handleRemoteQuery(new Query($data['name'], $data['data'], $data['id']));
                 break;
             }
 
             case 'result': {
-                $this->handleResult($data['query_id'], new Result($data['code'], $data['data']));
+                $this->handleRemoteResult($data['id'], new Result($data['code'], $data['data']));
                 break;
             }
         }
     }
 
-    private function handleResult(string $queryId, ResultInterface $result): void
+    private function handleRemoteResult(string $queryId, ResultInterface $result): void
     {
         $waiting = $this->waiting[$queryId] ?? null;
 
@@ -101,37 +101,33 @@ class QueryBusClient implements QueryBus
         $waiting->resolve($result);
     }
 
-    private function handleQuery(string $queryId, QueryInterface $query): void
+    private function handleRemoteQuery(QueryInterface $query): void
     {
         foreach ($this->handlers as $handler) {
             if (in_array($query->getName(), $handler->getSupportedQueries())) {
-                try {
-                    $result = $handler->handleQuery($query);
-                } catch (\Throwable $e) {
-                    $result = resolve(new Result(-1, [
-                        'error' => [
-                            'exception' => $e::class,
-                            'message' => $e->getMessage()
-                        ]
-                    ]));
-                }
+                $result = $handler->handleQuery($query);
 
-                $result->then(
-                    function (ResultInterface $result) use ($queryId) {
+                $result
+                    ->then(
+                        function (ResultInterface $result) {
+                            return $result;
+                        },
+                        function (\Throwable $e) {
+                            return new Result(-1, [
+                                'error' => [
+                                    'exception' => $e::class,
+                                    'message' => $e->getMessage()
+                                ]
+                            ]);
+                        }
+                    )
+                    ->then(function (ResultInterface $result) use ($query) {
                         $this->send(new Command('result', [
-                            'query_id' => $queryId,
+                            'id' => $query->getId(),
                             'code' => $result->getCode(),
                             'data' => $result->getData()
                         ]));
-                    },
-                    function (ResultInterface $result) use ($queryId) {
-                        $this->send(new Command('result', [
-                            'query_id' => $queryId,
-                            'code' => $result->getCode(),
-                            'data' => $result->getData()
-                        ]));
-                    },
-                );
+                    });
 
                 break;
             }

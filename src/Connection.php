@@ -40,6 +40,10 @@ class Connection implements EventEmitterInterface
 
     public function send(Command $command): void
     {
+        if (!$this->connection) {
+            return;
+        }
+
         $serialized = json_encode([
             'x' => $command->getName(),
             'd' => $command->getData()

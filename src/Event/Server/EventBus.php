@@ -6,12 +6,13 @@ use inisire\NetBus\Buffer;
 use inisire\NetBus\Command;
 use inisire\NetBus\Event\Event;
 use inisire\NetBus\Event\Server\EventBusConnection;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
 use React\Socket\SocketServer;
 
-class EventBus
+class EventBus implements EventDispatcherInterface
 {
     private SocketServer $server;
 
@@ -35,42 +36,23 @@ class EventBus
         });
     }
 
-    public function auth(string $id, string $address): void
-    {
-        $this->logger->debug('Auth', ['id' => $id, 'address' => $address]);
-
-        $connection = $this->connections[$id];
-    }
-
     private function handleCommand(string $id, Command $command): void
     {
         $data = $command->getData();
 
         switch ($command->getName()) {
-            case 'auth': {
-                $this->auth($id, $data['address']);
-                break;
-            }
-
             case 'event': {
-                $this->handleEvent($id, new \inisire\NetBus\DTO\Event($data['name'], $data['data'] ?? []));
+                $this->handleRemoteEvent($id, new \inisire\NetBus\DTO\Event($data['name'], $data['data'] ?? []));
                 break;
             }
         }
     }
 
-    private function handleEvent(string $clientId, Event $event): void
+    private function handleRemoteEvent(string $clientId, Event $event): void
     {
         $this->logger->debug('Event', ['from' => $clientId, 'event' => [$event->getName(), $event->getData()]]);
 
-        foreach ($this->connections as $connection) {
-            if ($connection->isSubscribed($event->getName())) {
-                $connection->send(new Command('event', [
-                    'name' => $event->getName(),
-                    'data' => $event->getData()
-                ]));
-            }
-        }
+        $this->dispatch($event);
     }
 
     private function onEnd(string $id): void
@@ -92,5 +74,22 @@ class EventBus
         $connection->on('end', function () use ($id) {
             $this->onEnd($id);
         });
+    }
+
+    public function dispatch(object $event)
+    {
+        if (!$event instanceof Event) {
+            $this->logger->error('Bad event', ['class' => $event::class, 'expected' => Event::class]);
+            return;
+        }
+
+        foreach ($this->connections as $connection) {
+            if ($connection->isSubscribed($event->getName())) {
+                $connection->send(new Command('event', [
+                    'name' => $event->getName(),
+                    'data' => $event->getData()
+                ]));
+            }
+        }
     }
 }
