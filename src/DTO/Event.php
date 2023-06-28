@@ -2,7 +2,7 @@
 
 namespace inisire\NetBus\DTO;
 
-class Event implements \inisire\NetBus\Event
+class Event implements \inisire\NetBus\Event\Event
 {
     public function __construct(
         private readonly string $name,

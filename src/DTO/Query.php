@@ -2,7 +2,7 @@
 
 namespace inisire\NetBus\DTO;
 
-class Query implements \inisire\NetBus\QueryInterface
+class Query implements \inisire\NetBus\Query\QueryInterface
 {
     public function __construct(
         private readonly string $name,
