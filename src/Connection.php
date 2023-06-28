@@ -26,8 +26,6 @@ class Connection implements EventEmitterInterface
             $this->emit('end', [$data]);
         });
 
-        $this->
-
         $connection->on('data', function (string $data) {
             $this->input->write($data);
 
