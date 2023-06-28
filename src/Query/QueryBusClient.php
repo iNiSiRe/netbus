@@ -29,7 +29,7 @@ class QueryBusClient implements QueryBusInterface
     private array $waiting = [];
 
     public function __construct(
-        private LoopInterface $loop,
+        private LoopInterface   $loop,
         private LoggerInterface $logger
     )
     {
@@ -75,12 +75,14 @@ class QueryBusClient implements QueryBusInterface
         $data = $command->getData();
 
         switch ($command->getName()) {
-            case 'query': {
+            case 'query':
+            {
                 $this->handleRemoteQuery(new Query($data['name'], $data['data'], $data['id']));
                 break;
             }
 
-            case 'result': {
+            case 'result':
+            {
                 $this->handleRemoteResult($data['id'], new Result($data['code'], $data['data']));
                 break;
             }
@@ -158,8 +160,8 @@ class QueryBusClient implements QueryBusInterface
         $queryId = uniqid();
 
         $this->send(new Command('query', [
-            'query_id' => $queryId,
-            'dst' => $deferred,
+            'id' => $queryId,
+            'address' => $destination,
             'name' => $query->getName(),
             'data' => $query->getData()
         ]));
