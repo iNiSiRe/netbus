@@ -4,12 +4,13 @@ namespace inisire\NetBus\Event;
 
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
+use inisire\NetBus\Event\Server\EventSource;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
 
-class EventBusClient implements EventDispatcherInterface
+class EventBusClient
 {
     private ?Connection $connection = null;
 
@@ -22,23 +23,23 @@ class EventBusClient implements EventDispatcherInterface
 
     public function __construct(
         private readonly LoopInterface $loop,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     )
     {
         $this->queue = new \SplQueue();
     }
 
-    public function connect(string $host, ?string $address = null): PromiseInterface
+    public function connect(string $host): PromiseInterface
     {
         $connector = new \React\Socket\Connector($this->loop);
 
         return $connector
             ->connect($host)
-            ->then(function (\React\Socket\ConnectionInterface $connection) use ($address) {
+            ->then(function (\React\Socket\ConnectionInterface $connection) {
                 $this->connection = new Connection($connection);
 
                 $this->connection->on('command', function (Command $command) {
-                    $this->handleCommand($command);
+                    $this->handleRemoteCommand($command);
                 });
 
                 while ($this->queue->count() > 0) {
@@ -55,22 +56,27 @@ class EventBusClient implements EventDispatcherInterface
             });
     }
 
-    private function handleCommand(Command $command): void
+    private function handleRemoteCommand(Command $command): void
     {
         switch ($command->getName()) {
             case 'event': {
                 $data = $command->getData();
-                $this->handleEvent(new \inisire\NetBus\DTO\Event($data['name'], $data['data']));
+                $this->handleRemoteEvent(new \inisire\NetBus\DTO\RemoteEvent($data['from'], $data['name'], $data['data']));
                 break;
             }
         }
     }
 
-    private function handleEvent(Event $event): void
+    private function handleRemoteEvent(RemoteEventInterface $event): void
     {
+        $this->logger->debug('Event received', ['from' => $event->getFrom(), 'name' => $event->getName(), 'data' => $event->getData()]);
+
         foreach ($this->subscribers as $subscriber) {
-            if (in_array($event->getName(), $subscriber->getSupportedEvents())) {
-                $subscriber->handleEvent($event);
+            foreach ($subscriber->getSupportedEvents() as $supportedEvent) {
+                if ($supportedEvent === $event->getName() || $supportedEvent === '*') {
+                    $subscriber->handleEvent($event);
+                    break;
+                }
             }
         }
     }
@@ -91,13 +97,22 @@ class EventBusClient implements EventDispatcherInterface
         }
     }
 
-    public function dispatch(object $event)
+    private function registerEventSource(EventSource $eventSource)
     {
-        if (!$event instanceof Event) {
-            $this->logger->error('Bad event', ['class' => $event::class, 'expected' => Event::class]);
-            return;
-        }
+        $eventSource->subscribe(function (RemoteEventInterface $event) {
+            $this->sendCommand(new Command('event', [
+                'from' => $event->getFrom(),
+                'name' => $event->getName(),
+                'data' => $event->getData()
+            ]));
+        });
+    }
 
-        $this->sendCommand(new Command('event', ['name' => $event->getName(), 'data' => $event->getData()]));
+    public function createEventDispatcher(string $address): EventDispatcherInterface
+    {
+        $source = new InternalEventSource($address);
+        $this->registerEventSource($source);
+
+        return $source;
     }
 }

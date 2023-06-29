@@ -4,7 +4,10 @@ namespace inisire\NetBus\Event\Server;
 
 use inisire\NetBus\Buffer;
 use inisire\NetBus\Command;
+use inisire\NetBus\Connection;
 use inisire\NetBus\Event\Event;
+use inisire\NetBus\Event\EventSubscriber;
+use inisire\NetBus\Event\RemoteEventInterface;
 use inisire\NetBus\Event\Server\EventBusConnection;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
@@ -12,14 +15,14 @@ use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
 use React\Socket\SocketServer;
 
-class EventBus implements EventDispatcherInterface
+class EventBus
 {
     private SocketServer $server;
 
     /**
-     * @var array<EventBusConnection>
+     * @var array<string, EventSubscriber>
      */
-    private array $connections = [];
+    private array $subscribers = [];
 
     public function __construct(
         private readonly LoopInterface $loop,
@@ -36,60 +39,58 @@ class EventBus implements EventDispatcherInterface
         });
     }
 
-    private function handleCommand(string $id, Command $command): void
+    private function handleRemoteSubscribe(Connection $connection, array $events = []): void
     {
-        $data = $command->getData();
+        $subscriber = new RemoteEventSubscriber($connection, $events);
 
+        $this->subscribers[$connection->getId()] = $subscriber;
+
+        $connection->on('end', function () use ($connection) {
+            unset($this->subscribers[$connection->getId()]);
+        });
+    }
+
+    private function handleRemoteCommand(Connection $connection, Command $command): void
+    {
         switch ($command->getName()) {
-            case 'event': {
-                $this->handleRemoteEvent($id, new \inisire\NetBus\DTO\Event($data['name'], $data['data'] ?? []));
+            case 'subscribe': {
+                $data = $command->getData();
+                $this->handleRemoteSubscribe($connection, $data['events'] ?? []);
                 break;
             }
         }
     }
 
-    private function handleRemoteEvent(string $clientId, Event $event): void
+    private function handleEvent(RemoteEventInterface $event): void
     {
-        $this->logger->debug('Event', ['from' => $clientId, 'event' => [$event->getName(), $event->getData()]]);
+        $this->logger->debug('Event', ['event' => [$event->getName(), $event->getData()]]);
 
-        $this->dispatch($event);
-    }
-
-    private function onEnd(string $id): void
-    {
-        unset($this->connections[$id]);
+        foreach ($this->subscribers as $subscriber) {
+            foreach ($subscriber->getSupportedEvents() as $supportedEvent) {
+                if ($supportedEvent === $event->getName() || $supportedEvent === '*') {
+                    $subscriber->handleEvent($event);
+                    break;
+                }
+            }
+        }
     }
 
     private function onConnection(ConnectionInterface $connection): void
     {
         $this->logger->debug('Connected', ['remote' => $connection->getRemoteAddress()]);
 
-        $id = spl_object_id($connection);
-        $this->connections[$id] = new EventBusConnection($connection);
-
-        $connection->on('command', function (Command $command) use ($id) {
-            $this->handleCommand($id, $command);
+        $connection = new EventBusConnection($connection);
+        $connection->on('command', function (Command $command) use ($connection) {
+            $this->handleRemoteCommand($connection, $command);
         });
 
-        $connection->on('end', function () use ($id) {
-            $this->onEnd($id);
-        });
+        $this->registerEventSource(new RemoteEventSource($connection));
     }
 
-    public function dispatch(object $event)
+    public function registerEventSource(EventSource $eventSource): void
     {
-        if (!$event instanceof Event) {
-            $this->logger->error('Bad event', ['class' => $event::class, 'expected' => Event::class]);
-            return;
-        }
-
-        foreach ($this->connections as $connection) {
-            if ($connection->isSubscribed($event->getName())) {
-                $connection->send(new Command('event', [
-                    'name' => $event->getName(),
-                    'data' => $event->getData()
-                ]));
-            }
-        }
+        $eventSource->subscribe(function (RemoteEventInterface $event) {
+            $this->handleEvent($event);
+        });
     }
 }

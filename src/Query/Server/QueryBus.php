@@ -64,7 +64,7 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
             case 'query':
             {
                 $data = $command->getData();
-                $this->handleQuery($from, $data['address'], new Query($data['name'], $data['data'], $data['id']));
+                $this->handleRemoteQuery($from, $data['address'], new Query($data['name'], $data['data'], $data['id']));
                 break;
             }
 
@@ -76,17 +76,20 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
         }
     }
 
-    private function handleQuery(Connection $from, string $address, QueryInterface $query): void
+    private function handleRemoteQuery(Connection $from, string $address, QueryInterface $query): void
     {
-        $this->logger->debug('Query', ['query' => [$query->getName(), $query->getData()]]);
+        $this->logger->debug('Handle remote query', ['query' => [$query->getName(), $query->getData()]]);
 
-        $this->execute($address, $query)->then(function (ResultInterface $result) use ($from, $query) {
-            $from->send(new Command('result', [
-                'id' => $query->getId(),
-                'code' => $result->getCode(),
-                'data' => $result->getData()
-            ]));
-        });
+        $this
+            ->execute($address, $query)
+            ->then(function (ResultInterface $result) use ($from, $query) {
+                $this->logger->debug('Remote query: Send result', ['code' => $result->getCode(), 'data' => $result->getData()]);
+                $from->send(new Command('result', [
+                    'id' => $query->getId(),
+                    'code' => $result->getCode(),
+                    'data' => $result->getData()
+                ]));
+            });
     }
 
     private function onDisconnect(Connection $from): void
@@ -100,11 +103,11 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
 
         $busConnection = new Connection($connection);
 
-        $connection->on('command', function (Command $command) use ($busConnection) {
+        $busConnection->on('command', function (Command $command) use ($busConnection) {
             $this->handleRemoteCommand($busConnection, $command);
         });
 
-        $connection->on('end', function () use ($busConnection) {
+        $busConnection->on('end', function () use ($busConnection) {
             $this->onDisconnect($busConnection);
         });
     }

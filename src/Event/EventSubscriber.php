@@ -6,5 +6,5 @@ interface EventSubscriber
 {
     public function getSupportedEvents(): array;
 
-    public function handleEvent(Event $event);
+    public function handleEvent(RemoteEventInterface $event);
 }

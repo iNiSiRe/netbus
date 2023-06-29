@@ -16,6 +16,10 @@ use function React\Promise\resolve;
 class QueryBusClient implements QueryBusInterface
 {
     private ?Connection $connection = null;
+
+    /**
+     * @var \SplQueue<Command>
+     */
     private \SplQueue $queue;
 
     /**
@@ -45,16 +49,18 @@ class QueryBusClient implements QueryBusInterface
             ->then(function (\React\Socket\ConnectionInterface $connection) {
                 $this->connection = new Connection($connection);
 
-                $connection->on('command', function (Command $command) {
-                    $this->handleCommand($command);
+                $this->connection->on('command', function (Command $command) {
+                    $this->handleRemoteCommand($command);
                 });
 
-                $connection->on('end', function () {
+                $this->connection->on('end', function () {
                     $this->handleDisconnect();
                 });
 
                 while ($this->queue->count() > 0) {
-                    $this->connection->send($this->queue->pop());
+                    $command = $this->queue->pop();
+                    $this->logger->debug('Connection established. Resend command', [$command->getName(), $command->getData()]);
+                    $this->connection->send($command);
                 }
 
                 return $connection;
@@ -70,8 +76,10 @@ class QueryBusClient implements QueryBusInterface
         $this->connection = null;
     }
 
-    private function handleCommand(Command $command): void
+    private function handleRemoteCommand(Command $command): void
     {
+        $this->logger->debug('Received command', ['name' => $command->getName(), 'data' => $command->getData()]);
+
         $data = $command->getData();
 
         switch ($command->getName()) {

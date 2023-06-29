@@ -15,15 +15,15 @@ class Connection implements EventEmitterInterface
     private ?Buffer $input;
 
     public function __construct(
-        private readonly ?ConnectionInterface $connection,
+        private ?ConnectionInterface $connection,
     )
     {
         $this->id = uniqid();
         $this->input = new Buffer();
 
-        $connection->on('end', function (string $data) {
+        $connection->on('end', function () {
             $this->connection = null;
-            $this->emit('end', [$data]);
+            $this->emit('end');
         });
 
         $connection->on('data', function (string $data) {
