@@ -4,9 +4,9 @@ namespace inisire\NetBus\Query\Server;
 
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
-use inisire\NetBus\DTO\Query;
-use inisire\NetBus\DTO\Result;
-use inisire\NetBus\Query\QueryHandler;
+use inisire\NetBus\Query\Query;
+use inisire\NetBus\Query\Result;
+use inisire\NetBus\Query\QueryHandlerInterface;
 use inisire\NetBus\Query\ResultInterface;
 use inisire\NetBus\Query\QueryInterface;
 use Psr\Log\LoggerInterface;
@@ -21,7 +21,7 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
     private SocketServer $server;
 
     /**
-     * @var array<string, QueryHandler>
+     * @var array<string, QueryHandlerInterface>
      */
     private array $handlers = [];
 
@@ -48,13 +48,13 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
     private function handleRemoteRegister(Connection $from, Command $command): void
     {
         $data = $command->getData();
-        $address = $data['address'];
+        $nodeId = $data['nodeId'];
         $queries = $data['queries'] ?? [];
 
-        $this->handlers[$address] = new RemoteQueryHandler($this->loop, $from, $queries);
+        $this->handlers[$nodeId] = new RemoteQueryHandlerInterface($this->loop, $from, $queries);
 
-        $from->on('end', function () use ($address) {
-            unset($this->handlers[$address]);
+        $from->on('end', function () use ($nodeId) {
+            unset($this->handlers[$nodeId]);
         });
     }
 
@@ -64,7 +64,7 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
             case 'query':
             {
                 $data = $command->getData();
-                $this->handleRemoteQuery($from, $data['address'], new Query($data['name'], $data['data'], $data['id']));
+                $this->handleRemoteQuery($from, $data['destination'], new Query($data['name'], $data['data'], $data['id']));
                 break;
             }
 
@@ -76,12 +76,12 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
         }
     }
 
-    private function handleRemoteQuery(Connection $from, string $address, QueryInterface $query): void
+    private function handleRemoteQuery(Connection $from, string $destinationId, QueryInterface $query): void
     {
         $this->logger->debug('Handle remote query', ['query' => [$query->getName(), $query->getData()]]);
 
         $this
-            ->execute($address, $query)
+            ->execute($destinationId, $query)
             ->then(function (ResultInterface $result) use ($from, $query) {
                 $this->logger->debug('Remote query: Send result', ['code' => $result->getCode(), 'data' => $result->getData()]);
                 $from->send(new Command('result', [
@@ -112,14 +112,14 @@ class QueryBus implements \inisire\NetBus\Query\QueryBusInterface
         });
     }
 
-    public function registerHandler(string $address, QueryHandler $handler): void
+    public function registerHandler(string $nodeId, QueryHandlerInterface $handler): void
     {
-        $this->handlers[$address] = $handler;
+        $this->handlers[$nodeId] = $handler;
     }
 
-    public function execute(string $destination, QueryInterface $query): PromiseInterface
+    public function execute(string $nodeId, QueryInterface $query): PromiseInterface
     {
-        $handler = $this->handlers[$destination] ?? null;
+        $handler = $this->handlers[$nodeId] ?? null;
 
         if ($handler) {
             $result = $handler->handleQuery($query);

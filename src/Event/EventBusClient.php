@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
 
-class EventBusClient
+class EventBusClient implements EventBusInterface
 {
     private ?Connection $connection = null;
 
@@ -61,7 +61,7 @@ class EventBusClient
         switch ($command->getName()) {
             case 'event': {
                 $data = $command->getData();
-                $this->handleRemoteEvent(new \inisire\NetBus\DTO\RemoteEvent($data['from'], $data['name'], $data['data']));
+                $this->handleRemoteEvent(new \inisire\NetBus\Event\RemoteEvent($data['sourceId'], $data['name'], $data['data']));
                 break;
             }
         }
@@ -69,7 +69,7 @@ class EventBusClient
 
     private function handleRemoteEvent(RemoteEventInterface $event): void
     {
-        $this->logger->debug('Event received', ['from' => $event->getFrom(), 'name' => $event->getName(), 'data' => $event->getData()]);
+        $this->logger->debug('Event received', ['sourceId' => $event->getSourceNodeId(), 'name' => $event->getName(), 'data' => $event->getData()]);
 
         foreach ($this->subscribers as $subscriber) {
             foreach ($subscriber->getSupportedEvents() as $supportedEvent) {
@@ -97,22 +97,12 @@ class EventBusClient
         }
     }
 
-    private function registerEventSource(EventSource $eventSource)
+    public function dispatch(string $sourceId, EventInterface $event): void
     {
-        $eventSource->subscribe(function (RemoteEventInterface $event) {
-            $this->sendCommand(new Command('event', [
-                'from' => $event->getFrom(),
-                'name' => $event->getName(),
-                'data' => $event->getData()
-            ]));
-        });
-    }
-
-    public function createEventDispatcher(string $address): EventDispatcherInterface
-    {
-        $source = new InternalEventSource($address);
-        $this->registerEventSource($source);
-
-        return $source;
+        $this->sendCommand(new Command('event', [
+            'sourceId' => $sourceId,
+            'name' => $event->getName(),
+            'data' => $event->getData()
+        ]));
     }
 }

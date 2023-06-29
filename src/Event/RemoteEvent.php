@@ -1,22 +1,22 @@
 <?php
 
-namespace inisire\NetBus\DTO;
+namespace inisire\NetBus\Event;
 
 use inisire\NetBus\Event\RemoteEventInterface;
 
 class RemoteEvent implements RemoteEventInterface
 {
     public function __construct(
-        private readonly string $from,
+        private readonly string $sourceNodeId,
         private readonly string $name,
-        private readonly array $data,
+        private readonly array  $data,
     )
     {
     }
 
-    public function getFrom(): string
+    public function getSourceNodeId(): string
     {
-        return $this->from;
+        return $this->sourceNodeId;
     }
 
     public function getName(): string

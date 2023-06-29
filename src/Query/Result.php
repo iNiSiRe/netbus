@@ -1,6 +1,6 @@
 <?php
 
-namespace inisire\NetBus\DTO;
+namespace inisire\NetBus\Query;
 
 use inisire\NetBus\Query\ResultInterface;
 

@@ -2,10 +2,8 @@
 
 namespace inisire\NetBus\Event;
 
-interface RemoteEventInterface
+interface EventInterface
 {
-    public function getSourceNodeId(): string;
-
     public function getName(): string;
 
     public function getData(): array;

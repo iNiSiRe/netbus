@@ -1,6 +1,6 @@
 <?php
 
-namespace inisire\NetBus\DTO;
+namespace inisire\NetBus\Query;
 
 class Query implements \inisire\NetBus\Query\QueryInterface
 {

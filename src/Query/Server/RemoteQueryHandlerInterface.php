@@ -4,8 +4,8 @@ namespace inisire\NetBus\Query\Server;
 
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
-use inisire\NetBus\DTO\Result;
-use inisire\NetBus\Query\QueryHandler;
+use inisire\NetBus\Query\Result;
+use inisire\NetBus\Query\QueryHandlerInterface;
 use inisire\NetBus\Query\QueryInterface;
 use inisire\NetBus\Query\ResultInterface;
 use React\EventLoop\LoopInterface;
@@ -13,7 +13,7 @@ use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
-class RemoteQueryHandler implements QueryHandler
+class RemoteQueryHandlerInterface implements QueryHandlerInterface
 {
     /**
      * @var array<string, Deferred>

@@ -2,20 +2,19 @@
 
 namespace inisire\NetBus\Event\Server;
 
-use inisire\NetBus\Buffer;
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
-use inisire\NetBus\Event\Event;
+use inisire\NetBus\Event\EventBusInterface;
+use inisire\NetBus\Event\EventInterface;
 use inisire\NetBus\Event\EventSubscriber;
+use inisire\NetBus\Event\RemoteEvent;
 use inisire\NetBus\Event\RemoteEventInterface;
-use inisire\NetBus\Event\Server\EventBusConnection;
-use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
 use React\Socket\SocketServer;
 
-class EventBus
+class EventBus implements EventBusInterface
 {
     private SocketServer $server;
 
@@ -79,7 +78,7 @@ class EventBus
     {
         $this->logger->debug('Connected', ['remote' => $connection->getRemoteAddress()]);
 
-        $connection = new EventBusConnection($connection);
+        $connection = new Connection($connection);
         $connection->on('command', function (Command $command) use ($connection) {
             $this->handleRemoteCommand($connection, $command);
         });
@@ -87,10 +86,15 @@ class EventBus
         $this->registerEventSource(new RemoteEventSource($connection));
     }
 
-    public function registerEventSource(EventSource $eventSource): void
+    private function registerEventSource(EventSource $eventSource): void
     {
         $eventSource->subscribe(function (RemoteEventInterface $event) {
             $this->handleEvent($event);
         });
+    }
+
+    public function dispatch(string $sourceId, EventInterface $event): void
+    {
+        $this->handleEvent(new RemoteEvent($sourceId, $event->getName(), $event->getData()));
     }
 }

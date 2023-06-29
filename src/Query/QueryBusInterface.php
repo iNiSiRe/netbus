@@ -9,7 +9,7 @@ interface QueryBusInterface
     /**
      * @return PromiseInterface<ResultInterface>
      */
-    public function execute(string $destination, QueryInterface $query): PromiseInterface;
+    public function execute(string $nodeId, QueryInterface $query): PromiseInterface;
 
-    public function registerHandler(string $address, QueryHandler $handler): void;
+    public function registerHandler(string $nodeId, QueryHandlerInterface $handler): void;
 }

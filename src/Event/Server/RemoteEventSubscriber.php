@@ -24,7 +24,7 @@ class RemoteEventSubscriber implements EventSubscriber
     public function handleEvent(RemoteEventInterface $event): void
     {
         $this->connection->send(new Command('event', [
-            'from' => $event->getFrom(),
+            'sourceId' => $event->getSourceNodeId(),
             'name' => $event->getName(),
             'data' => $event->getData()
         ]));

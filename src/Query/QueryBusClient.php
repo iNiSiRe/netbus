@@ -4,14 +4,13 @@ namespace inisire\NetBus\Query;
 
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
-use inisire\NetBus\DTO\Query;
-use inisire\NetBus\DTO\Result;
+use inisire\NetBus\Query\Query;
+use inisire\NetBus\Query\Result;
 use Psr\Log\LoggerInterface;
 use React\EventLoop\LoopInterface;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
-
 
 class QueryBusClient implements QueryBusInterface
 {
@@ -23,7 +22,7 @@ class QueryBusClient implements QueryBusInterface
     private \SplQueue $queue;
 
     /**
-     * @var QueryHandler[]
+     * @var QueryHandlerInterface[]
      */
     private array $handlers = [];
 
@@ -144,9 +143,9 @@ class QueryBusClient implements QueryBusInterface
         }
     }
 
-    public function registerHandler(string $address, QueryHandler $handler): void
+    public function registerHandler(string $nodeId, QueryHandlerInterface $handler): void
     {
-        $this->send(new Command('register', ['address' => $address, 'queries' => $handler->getSupportedQueries()]));
+        $this->send(new Command('register', ['nodeId' => $nodeId, 'queries' => $handler->getSupportedQueries()]));
 
         $this->handlers[] = $handler;
     }
@@ -161,7 +160,7 @@ class QueryBusClient implements QueryBusInterface
         }
     }
 
-    public function execute(string $destination, QueryInterface $query): PromiseInterface
+    public function execute(string $nodeId, QueryInterface $query): PromiseInterface
     {
         $deferred = new Deferred();
 
@@ -169,7 +168,7 @@ class QueryBusClient implements QueryBusInterface
 
         $this->send(new Command('query', [
             'id' => $queryId,
-            'address' => $destination,
+            'destination' => $nodeId,
             'name' => $query->getName(),
             'data' => $query->getData()
         ]));

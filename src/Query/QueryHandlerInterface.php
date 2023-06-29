@@ -4,7 +4,7 @@ namespace inisire\NetBus\Query;
 
 use React\Promise\PromiseInterface;
 
-interface QueryHandler
+interface QueryHandlerInterface
 {
     public function getSupportedQueries(): array;
 

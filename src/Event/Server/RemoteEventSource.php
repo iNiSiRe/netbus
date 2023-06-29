@@ -4,7 +4,7 @@ namespace inisire\NetBus\Event\Server;
 
 use inisire\NetBus\Command;
 use inisire\NetBus\Connection;
-use inisire\NetBus\DTO\RemoteEvent;
+use inisire\NetBus\Event\RemoteEvent;
 
 class RemoteEventSource extends EventSource
 {
