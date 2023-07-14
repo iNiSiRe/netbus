@@ -4,7 +4,5 @@ namespace inisire\NetBus\Event;
 
 interface EventSubscriber
 {
-    public function getSupportedEvents(): array;
-
-    public function handleEvent(RemoteEventInterface $event);
+    public function getSubscribedEvents(): array;
 }

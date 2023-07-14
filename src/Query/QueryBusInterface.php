@@ -2,14 +2,9 @@
 
 namespace inisire\NetBus\Query;
 
-use React\Promise\PromiseInterface;
-
 interface QueryBusInterface
 {
-    /**
-     * @return PromiseInterface<ResultInterface>
-     */
-    public function execute(string $nodeId, QueryInterface $query): PromiseInterface;
+    public function execute(string $destinationId, string $name, array $data = []): ResultInterface;
 
-    public function registerHandler(string $nodeId, QueryHandlerInterface $handler): void;
+    public function registerHandler(string $busId, QueryHandlerInterface $handler): void;
 }

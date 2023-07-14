@@ -2,21 +2,19 @@
 
 namespace inisire\NetBus\Event;
 
-use inisire\NetBus\Event\RemoteEventInterface;
-
-class RemoteEvent implements RemoteEventInterface
+class RemoteEvent implements EventInterface
 {
     public function __construct(
-        private readonly string $sourceNodeId,
+        private readonly string $sourceId,
         private readonly string $name,
         private readonly array  $data,
     )
     {
     }
 
-    public function getSourceNodeId(): string
+    public function getSourceId(): string
     {
-        return $this->sourceNodeId;
+        return $this->sourceId;
     }
 
     public function getName(): string

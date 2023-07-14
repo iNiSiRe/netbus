@@ -2,7 +2,7 @@
 
 namespace inisire\NetBus\Event;
 
-class Event implements \inisire\NetBus\Event\EventInterface
+class Event implements EventInterface
 {
     public function __construct(
         private readonly string $name,

@@ -2,7 +2,6 @@
 
 namespace inisire\NetBus\Query;
 
-use inisire\NetBus\Query\ResultInterface;
 
 class Result implements ResultInterface
 {
