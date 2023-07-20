@@ -2,11 +2,7 @@
 
 namespace inisire\NetBus\Event;
 
-interface RemoteEventInterface
+interface RemoteEventInterface extends EventInterface
 {
-    public function getSourceId(): string;
-
-    public function getName(): string;
-
-    public function getData(): array;
+    public function getSource(): string;
 }

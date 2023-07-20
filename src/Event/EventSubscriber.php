@@ -4,5 +4,8 @@ namespace inisire\NetBus\Event;
 
 interface EventSubscriber
 {
-    public function getSubscribedEvents(): array;
+    /**
+     * @return array<SubscriptionInterface>
+     */
+    public function getEventSubscriptions(): array;
 }

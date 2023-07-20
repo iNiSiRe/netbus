@@ -2,6 +2,7 @@
 
 namespace inisire\NetBus\Event;
 
+
 class Event implements EventInterface
 {
     public function __construct(

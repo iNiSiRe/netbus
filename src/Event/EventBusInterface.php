@@ -4,9 +4,9 @@ namespace inisire\NetBus\Event;
 
 interface EventBusInterface
 {
-    public function createSource(string $sourceId): EventSourceInterface;
+    public function createSource(string $source): EventSourceInterface;
 
-    public function subscribe(string $sourceId, EventSubscriber $subscriber): void;
+    public function subscribe(EventSubscriber $subscriber): void;
 
-    public function dispatch(string $sourceId, EventInterface $event): void;
+    public function dispatch(string $source, EventInterface $event): void;
 }
